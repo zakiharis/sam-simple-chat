@@ -1,0 +1,342 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  simple-chat-app
+
+Parameters:
+  ConnectionsTableName:
+    Type: String
+    Default: 'simplechat_connections'
+    Description: (Required) The name of the new DynamoDB to store connection identifiers for each connected clients. Minimum 3 characters
+    MinLength: 3
+    MaxLength: 50
+    AllowedPattern: ^[A-Za-z_]+$
+    ConstraintDescription: 'Required. Can be characters and underscore only. No numbers or special characters allowed.'
+  MessagesTableName:
+    Type: String
+    Default: 'simplechat_messages'
+    Description: (Required) The name of the new DynamoDB to store message from clients. Minimum 3 characters
+    MinLength: 3
+    MaxLength: 50
+    AllowedPattern: ^[A-Za-z_]+$
+    ConstraintDescription: 'Required. Can be characters and underscore only. No numbers or special characters allowed.'
+  MsgCounterTableName:
+    Type: String
+    Default: 'simplechat_msg_counter'
+    Description: (Required) The name of the new DynamoDB to store message count from clients. Minimum 3 characters
+    MinLength: 3
+    MaxLength: 50
+    AllowedPattern: ^[A-Za-z_]+$
+    ConstraintDescription: 'Required. Can be characters and underscore only. No numbers or special characters allowed.'
+
+Resources:
+  SimpleChatApp:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: SimpleChatApp
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      RouteKey: $connect
+      AuthorizationType: NONE
+      OperationName: ConnectRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref ConnectInteg
+  ConnectInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      Description: Connect Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OnConnectFunction.Arn}/invocations
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      OperationName: DisconnectRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref DisconnectInteg
+  DisconnectInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      Description: Disconnect Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OnDisconnectFunction.Arn}/invocations
+  SendRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      RouteKey: sendmessage
+      AuthorizationType: NONE
+      OperationName: SendRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref SendInteg
+  SendInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      Description: Send Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SendMessageFunction.Arn}/invocations
+  SendNotifyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      RouteKey: sendnotify
+      AuthorizationType: NONE
+      OperationName: SendNotifyRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref SendNotifyInteg
+  SendNotifyInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SimpleChatApp
+      Description: SendNotify Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SendNotifyFunction.Arn}/invocations
+  Deployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+    - ConnectRoute
+    - SendRoute
+    - SendNotifyRoute
+    - DisconnectRoute
+    Properties:
+      ApiId: !Ref SimpleChatApp
+  Stage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: Prod
+      Description: Prod Stage
+      DeploymentId: !Ref Deployment
+      ApiId: !Ref SimpleChatApp
+  ConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: "connectionId"
+        AttributeType: "S"
+      KeySchema:
+      - AttributeName: "connectionId"
+        KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      SSESpecification:
+        SSEEnabled: True
+      TableName: !Ref ConnectionsTableName
+  MessagesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: "myid"
+        AttributeType: "S"
+      - AttributeName: "timestamp"
+        AttributeType: "N"
+      KeySchema:
+      - AttributeName: "myid"
+        KeyType: "HASH"
+      - AttributeName: "timestamp"
+        KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      SSESpecification:
+        SSEEnabled: True
+      TableName: !Ref MessagesTableName
+  MsgCounterTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: "myid"
+        AttributeType: "S"
+      KeySchema:
+      - AttributeName: "myid"
+        KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      SSESpecification:
+        SSEEnabled: True
+      TableName: !Ref MsgCounterTableName
+  OnConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: on_connect/
+      Handler: handler.handle
+      MemorySize: 128
+      Runtime: python3.8
+      Environment:
+        Variables:
+          CONNECTION_TABLE_NAME: !Ref ConnectionsTableName
+          MESSAGE_TABLE_NAME: !Ref MessagesTableName
+          MSG_COUNTER_TABLE_NAME: !Ref MsgCounterTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref ConnectionsTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MessagesTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MsgCounterTableName
+  OnConnectPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - SimpleChatApp
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref OnConnectFunction
+      Principal: apigateway.amazonaws.com
+  OnDisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: on_disconnect/
+      Handler: handler.handle
+      MemorySize: 128
+      Runtime: python3.8
+      Environment:
+        Variables:
+          CONNECTION_TABLE_NAME: !Ref ConnectionsTableName
+          MESSAGE_TABLE_NAME: !Ref MessagesTableName
+          MSG_COUNTER_TABLE_NAME: !Ref MsgCounterTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref ConnectionsTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MessagesTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MsgCounterTableName
+      - Statement:
+        - Effect: Allow
+          Action:
+          - 'execute-api:ManageConnections'
+          Resource:
+          - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SimpleChatApp}/*'
+  OnDisconnectPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - SimpleChatApp
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref OnDisconnectFunction
+      Principal: apigateway.amazonaws.com
+  SendMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: send_message/
+      Handler: handler.handle
+      MemorySize: 128
+      Runtime: python3.8
+      Environment:
+        Variables:
+          CONNECTION_TABLE_NAME: !Ref ConnectionsTableName
+          MESSAGE_TABLE_NAME: !Ref MessagesTableName
+          MSG_COUNTER_TABLE_NAME: !Ref MsgCounterTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref ConnectionsTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MessagesTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MsgCounterTableName
+      - Statement:
+        - Effect: Allow
+          Action:
+          - 'execute-api:ManageConnections'
+          Resource:
+          - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SimpleChatApp}/*'
+  SendMessagePermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - SimpleChatApp
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SendMessageFunction
+      Principal: apigateway.amazonaws.com
+  SendNotifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: send_notify/
+      Handler: handler.handle
+      MemorySize: 128
+      Runtime: python3.8
+      Environment:
+        Variables:
+          CONNECTION_TABLE_NAME: !Ref ConnectionsTableName
+          MESSAGE_TABLE_NAME: !Ref MessagesTableName
+          MSG_COUNTER_TABLE_NAME: !Ref MsgCounterTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref ConnectionsTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MessagesTableName
+      - DynamoDBCrudPolicy:
+          TableName: !Ref MsgCounterTableName
+      - Statement:
+        - Effect: Allow
+          Action:
+          - 'execute-api:ManageConnections'
+          Resource:
+          - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SimpleChatApp}/*'
+  SendNotifyPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - SimpleChatApp
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SendNotifyFunction
+      Principal: apigateway.amazonaws.com
+
+Outputs:
+  ConnectionsTableArn:
+    Description: "Connections table ARN"
+    Value: !GetAtt ConnectionsTable.Arn
+
+  MessagesTableArn:
+    Description: "Messages table ARN"
+    Value: !GetAtt MessagesTable.Arn
+
+  MsgCounterTableArn:
+    Description: "Message Counter table ARN"
+    Value: !GetAtt MsgCounterTable.Arn
+
+  OnConnectFunctionArn:
+    Description: "OnConnect function ARN"
+    Value: !GetAtt OnConnectFunction.Arn
+
+  OnDisconnectFunctionArn:
+    Description: "OnDisconnect function ARN"
+    Value: !GetAtt OnDisconnectFunction.Arn
+
+  SendMessageFunctionArn:
+    Description: "SendMessage function ARN"
+    Value: !GetAtt SendMessageFunction.Arn
+
+  SendNotifyFunctionArn:
+    Description: "SendNotify function ARN"
+    Value: !GetAtt SendNotifyFunction.Arn
+
+  WebSocketURI:
+    Description: "The WSS Protocol URI to connect to"
+    Value: !Join [ '', [ 'wss://', !Ref SimpleChatApp, '.execute-api.',!Ref 'AWS::Region','.amazonaws.com/',!Ref 'Stage'] ]

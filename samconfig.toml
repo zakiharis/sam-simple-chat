@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "sam-simple-chat-app"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1m6rsehycuus6"
+s3_prefix = "sam-simple-chat-app"
+region = "ap-southeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "ConnectionsTableName=\"simplechat_connections_one\" MessagesTableName=\"simplechat_messages_two\" MsgCounterTableName=\"simplechat_msg_counter\""
