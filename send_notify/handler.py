@@ -6,10 +6,11 @@ dynamodb = boto3.client('dynamodb')
 
 def send_to_all(apigatewaymanagementapi, connection_ids, data):
     """
+    Send message to all alive connections
 
-    :param apigatewaymanagementapi:
-    :param connection_ids:
-    :param data:
+    :param apigatewaymanagementapi: apigatewaymanagemntapi client
+    :param connection_ids: List of connection ids from DDB
+    :param data: String message
     :return:
     """
     for connection_id in connection_ids:
@@ -26,8 +27,9 @@ def send_to_all(apigatewaymanagementapi, connection_ids, data):
 
 def get_messages():
     """
+    Method to get last 20 messages from users.
 
-    :return:
+    :return: List of messages
     """
     messages = []
     _messages = []
@@ -57,10 +59,14 @@ def get_messages():
 
 def handle(event, context):
     """
+    Method that handle sendnotify action. It will send chat history to client, and send messaage to all alive client
+    to notify that someone has joined the chat room.
 
-    :param event:
-    :param context:
-    :return:
+    :param event: JSON-formatted document that contains data for a Lambda function to process.
+    :param context: A context object is passed to your function by Lambda at runtime.
+    This object provides methods and properties that provide information about the invocation,
+    function, and runtime environment.
+    :return: {}
     """
     connection_id = event['requestContext']['connectionId']
     connection_ids = []

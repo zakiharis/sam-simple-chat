@@ -6,11 +6,12 @@ dynamodb = boto3.client('dynamodb')
 
 def send_to_all(apigatewaymanagementapi, connection_ids, data):
     """
+    Send message to all alive connections
 
-    :param apigatewaymanagementapi:
-    :param connection_ids:
-    :param data:
-    :return:
+    :param apigatewaymanagementapi: apigatewaymanagemntapi client
+    :param connection_ids: List of connection ids from DDB
+    :param data: String message
+    :return: None
     """
     for connection_id in connection_ids:
         try:
@@ -26,10 +27,13 @@ def send_to_all(apigatewaymanagementapi, connection_ids, data):
 
 def handle(event, context):
     """
+    Method that handle on_disconnect event such as sending message to notify other users that someone is leaving
 
-    :param event:
-    :param context:
-    :return:
+    :param event: JSON-formatted document that contains data for a Lambda function to process.
+    :param context: A context object is passed to your function by Lambda at runtime.
+    This object provides methods and properties that provide information about the invocation,
+    function, and runtime environment.
+    :return: {}
     """
     connection_id = event['requestContext']['connectionId']
     connection_ids = []

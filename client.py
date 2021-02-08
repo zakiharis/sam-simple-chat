@@ -9,9 +9,10 @@ from termcolor import colored
 
 def on_message(ws, message):
     """
+    Handle on_message event.
 
-    :param ws:
-    :param message:
+    :param ws: websocket instance
+    :param message: Message received
     :return:
     """
     print(colored(message, "green"))
@@ -19,9 +20,10 @@ def on_message(ws, message):
 
 def on_error(ws, error):
     """
+    Handle on_error event
 
-    :param ws:
-    :param error:
+    :param ws: websocket instance
+    :param error: Error message received
     :return:
     """
     print(colored(error, "red"))
@@ -29,8 +31,9 @@ def on_error(ws, error):
 
 def on_close(ws):
     """
+    Handle on_close event
 
-    :param ws:
+    :param ws: websocket instance
     :return:
     """
     print(colored("Bye! See you again.", "blue"))
@@ -39,8 +42,9 @@ def on_close(ws):
 
 def on_open(ws):
     """
+    Handle on_open event
 
-    :param ws:
+    :param ws: websocket instance
     :return:
     """
     def run():
@@ -60,9 +64,10 @@ def on_open(ws):
 @click.option("--username", prompt="Your username", help="Your chat username")
 def main(server_url, username):
     """
+    Main method to start chat client.
 
-    :param server_url:
-    :param username:
+    :param server_url: WebSocket server url
+    :param username: A username to chat
     :return:
     """
     ws_url = f"{server_url}?username={username}"

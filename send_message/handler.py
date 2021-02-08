@@ -9,10 +9,11 @@ dynamodb = boto3.client('dynamodb')
 
 def send_to_all(apigatewaymanagementapi, connection_ids, data):
     """
+    Send message to all alive connections
 
-    :param apigatewaymanagementapi:
-    :param connection_ids:
-    :param data:
+    :param apigatewaymanagementapi: apigatewaymanagemntapi client
+    :param connection_ids: List of connection ids from DDB
+    :param data: String message
     :return:
     """
     for connection_id in connection_ids:
@@ -29,8 +30,9 @@ def send_to_all(apigatewaymanagementapi, connection_ids, data):
 
 def increment_message():
     """
+    Insert message count (1) for first time, otherwise it will increase by 1 everytime user sending a message
 
-    :return:
+    :return: None
     """
     dynamodb.update_item(
         TableName=os.environ.get('MSG_COUNTER_TABLE_NAME'),
@@ -43,8 +45,9 @@ def increment_message():
 
 def store_message(data):
     """
+    Store users message in DDB for a maximum of 20 messages.
 
-    :param data:
+    :param data: User input message
     :return:
     """
     messages = []
@@ -86,10 +89,14 @@ def store_message(data):
 
 def handle(event, context):
     """
+    Method that handle sendmessage action. It will send message to all alive clients, store the messages in DDB and
+    increment the message counter.
 
-    :param event:
-    :param context:
-    :return:
+    :param event: JSON-formatted document that contains data for a Lambda function to process.
+    :param context: A context object is passed to your function by Lambda at runtime.
+    This object provides methods and properties that provide information about the invocation,
+    function, and runtime environment.
+    :return: {}
     """
     connection_id = event['requestContext']['connectionId']
     response = dynamodb.get_item(
