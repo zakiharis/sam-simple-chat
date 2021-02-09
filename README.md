@@ -43,3 +43,9 @@ This action also will send information that client is connected to others connec
 {"action": "sendmessage", "message": "Hello..."}
 ```
 This action will send the message to all connected clients
+
+### Test
+Simply execute the pytest command to run the test suite
+```
+python -m pytest -s tests
+```

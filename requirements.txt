@@ -3,5 +3,4 @@ websocket-client
 termcolor
 pytest
 boto3
-boto3-fixtures
 moto
