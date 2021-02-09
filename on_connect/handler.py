@@ -1,8 +1,6 @@
 import boto3
 import os
 
-dynamodb = boto3.client('dynamodb')
-
 
 def handle(event, context):
     """
@@ -14,6 +12,7 @@ def handle(event, context):
     function, and runtime environment.
     :return: {}
     """
+    dynamodb = boto3.client('dynamodb')
     username = event['queryStringParameters']['username']
     connection_id = event['requestContext']['connectionId']
 

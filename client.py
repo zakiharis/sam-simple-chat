@@ -2,9 +2,8 @@ import time
 import _thread as thread
 
 import click
+import termcolor
 import websocket
-
-from termcolor import colored
 
 
 def on_message(ws, message):
@@ -15,7 +14,7 @@ def on_message(ws, message):
     :param message: Message received
     :return:
     """
-    print(colored(message, "green"))
+    print(termcolor.colored(message, "green"))
 
 
 def on_error(ws, error):
@@ -26,7 +25,7 @@ def on_error(ws, error):
     :param error: Error message received
     :return:
     """
-    print(colored(error, "red"))
+    print(termcolor.colored(error, "red"))
 
 
 def on_close(ws):
@@ -36,7 +35,7 @@ def on_close(ws):
     :param ws: websocket instance
     :return:
     """
-    print(colored("Bye! See you again.", "blue"))
+    print(termcolor.colored("Bye! See you again.", "blue"))
     ws.close()
 
 
